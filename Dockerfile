@@ -5,7 +5,9 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql mysqli gd
+    && docker-php-ext-install pdo pdo_mysql mysqli gd \
+    && a2dismod mpm_event \
+    && a2enmod mpm_prefork rewrite
 
 WORKDIR /var/www/html
 COPY . /var/www/html
