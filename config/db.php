@@ -16,7 +16,7 @@ define('DB_PASS', getenv('DB_PASSWORD') ?: '');
 define('DB_CHARSET', 'utf8mb4');
 
 // Base URL Aplikasi
-define('BASE_URL', '/Jasa_Fotografi_Online');
+define('BASE_URL', getenv('BASE_URL') !== false ? getenv('BASE_URL') : '/Jasa_Fotografi_Online');
 
 // Nama Aplikasi
 define('APP_NAME', 'etherna.vows');
