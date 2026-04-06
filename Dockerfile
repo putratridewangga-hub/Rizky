@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
+RUN rm -f /var/www/html/index.html
 COPY . /var/www/html
 
 RUN chown -R www-data:www-data /var/www/html \
