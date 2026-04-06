@@ -8,15 +8,16 @@
  * menggunakan PDO (PHP Data Objects) untuk keamanan.
  */
 
-// Konfigurasi Database
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_NAME', getenv('DB_NAME') ?: 'db_booking_foto');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASSWORD') ?: '');
+// Konfigurasi Database (Railway Environment Variables)
+define('DB_HOST',    getenv('DB_HOST')     ?: 'localhost');
+define('DB_PORT',    getenv('DB_PORT')     ?: '3306');
+define('DB_NAME',    getenv('DB_NAME')     ?: 'db_booking_foto');
+define('DB_USER',    getenv('DB_USER')     ?: 'root');
+define('DB_PASS',    getenv('DB_PASSWORD') ?: '');
 define('DB_CHARSET', 'utf8mb4');
 
-// Base URL Aplikasi
-define('BASE_URL', getenv('BASE_URL') !== false ? getenv('BASE_URL') : '/Jasa_Fotografi_Online');
+// Base URL Aplikasi (kosong untuk Railway, /Jasa_Fotografi_Online untuk lokal)
+define('BASE_URL', getenv('BASE_URL') !== false && getenv('BASE_URL') !== '' ? getenv('BASE_URL') : '');
 
 // Nama Aplikasi
 define('APP_NAME', 'etherna.vows');
@@ -24,20 +25,18 @@ define('APP_NAME', 'etherna.vows');
 // ============================================
 // KONFIGURASI GOOGLE GEMINI API
 // ============================================
-// Dapatkan API Key dari: https://ai.google.dev/
-define('GEMINI_API_KEY', 'AIzaSyD7TygzNOciP9Dt_-dCgan9V1BpF5ptL4w');
-define('GEMINI_MODEL', 'gemini-2.5-flash');
+define('GEMINI_API_KEY',  'AIzaSyD7TygzNOciP9Dt_-dCgan9V1BpF5ptL4w');
+define('GEMINI_MODEL',    'gemini-2.5-flash');
 define('GEMINI_ENDPOINT', 'https://generativelanguage.googleapis.com/v1/models');
 
 /**
  * Fungsi untuk membuat koneksi database PDO
- * Menggunakan prepared statement untuk anti SQL injection
  */
 function getDB() {
     static $pdo = null;
     
     if ($pdo === null) {
-        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
         
         $options = [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -48,8 +47,7 @@ function getDB() {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            // Tampilkan pesan error yang aman
-            die("Koneksi database gagal. Pastikan MySQL sudah berjalan dan database 'db_booking_foto' sudah dibuat.");
+            die("Koneksi database gagal. Pastikan MySQL sudah berjalan dan database sudah dibuat.");
         }
     }
     
@@ -104,7 +102,7 @@ function cekAdmin() {
  */
 function setFlash($tipe, $pesan) {
     $_SESSION['flash'] = [
-        'tipe' => $tipe,
+        'tipe'  => $tipe,
         'pesan' => $pesan
     ];
 }
@@ -137,10 +135,10 @@ function getBadgeStatusBooking($status) {
  */
 function getBadgeStatusPembayaran($status) {
     $badges = [
-        'belum_bayar'           => 'bg-red-100 text-red-800 border-red-300',
-        'menunggu_konfirmasi'   => 'bg-yellow-100 text-yellow-800 border-yellow-300',
-        'lunas'                 => 'bg-green-100 text-green-800 border-green-300',
-        'gagal'                 => 'bg-red-100 text-red-800 border-red-300',
+        'belum_bayar'         => 'bg-red-100 text-red-800 border-red-300',
+        'menunggu_konfirmasi' => 'bg-yellow-100 text-yellow-800 border-yellow-300',
+        'lunas'               => 'bg-green-100 text-green-800 border-green-300',
+        'gagal'               => 'bg-red-100 text-red-800 border-red-300',
     ];
     return $badges[$status] ?? 'bg-gray-100 text-gray-800 border-gray-300';
 }
@@ -150,15 +148,15 @@ function getBadgeStatusPembayaran($status) {
  */
 function labelStatus($status) {
     $labels = [
-        'pending'               => 'Pending',
-        'dikonfirmasi'          => 'Dikonfirmasi',
-        'sedang_dikerjakan'     => 'Sedang Dikerjakan',
-        'selesai'               => 'Selesai',
-        'dibatalkan'            => 'Dibatalkan',
-        'belum_bayar'           => 'Belum Bayar',
-        'menunggu_konfirmasi'   => 'Menunggu Konfirmasi',
-        'lunas'                 => 'Lunas',
-        'gagal'                 => 'Gagal',
+        'pending'             => 'Pending',
+        'dikonfirmasi'        => 'Dikonfirmasi',
+        'sedang_dikerjakan'   => 'Sedang Dikerjakan',
+        'selesai'             => 'Selesai',
+        'dibatalkan'          => 'Dibatalkan',
+        'belum_bayar'         => 'Belum Bayar',
+        'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
+        'lunas'               => 'Lunas',
+        'gagal'               => 'Gagal',
     ];
     return $labels[$status] ?? ucfirst(str_replace('_', ' ', $status));
 }
