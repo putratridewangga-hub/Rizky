@@ -1,0 +1,10 @@
+POST https://rizkypratama.app.n8n.cloud/webhook-test/booking-foto
+Content-Type: application/json
+
+{
+  "nama": "Rizky Test",
+  "no_hp": "6283182393741",
+  "paket": "Wedding",
+  "tanggal": "2026-04-04 14:00:00",
+  "lokasi": "Padang"
+}

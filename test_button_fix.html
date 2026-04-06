@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - AI Button State Reset</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0f172a; }
+        .success { @apply bg-green-500/20 border border-green-500/30 text-green-300 rounded-lg p-4; }
+        .info { @apply bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-lg p-4; }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-2xl mx-auto space-y-6">
+        <h1 class="text-3xl font-bold text-white mb-8">🧪 Test AI Button State Reset</h1>
+        
+        <div class="success">
+            ✅ <strong>Perbaikan diterapkan:</strong>
+            <ul class="mt-3 space-y-2 text-sm">
+                <li>✓ Button state di-reset sepenuhnya saat "Coba Lagi"</li>
+                <li>✓ Form fields di-clear dengan sempurna</li>
+                <li>✓ Original button innerHTML di-restore saat error</li>
+                <li>✓ CSS disabled state visual feedback ditambahkan</li>
+                <li>✓ Icons di-render ulang setiap kali reset</li>
+            </ul>
+        </div>
+
+        <div class="info">
+            <strong>Cara Testing:</strong>
+            <ol class="mt-3 space-y-2 text-sm list-decimal list-inside">
+                <li>Buka halaman booking.php di browser</li>
+                <li>Klik tombol "Rekomendasi AI" (tombol biru)</li>
+                <li>Isi semua form fields</li>
+                <li>Klik "Dapatkan Rekomendasi AI"</li>
+                <li>Tunggu response dari AI</li>
+                <li><strong>Klik "Coba Lagi"</strong> - sekarang tombol harus bisa diklik lagi!</li>
+                <li>Refresh form dan submit sekali lagi - harus berfungsi normal</li>
+            </ol>
+        </div>
+
+        <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-blue-300 text-sm">
+            <strong>Catatan:</strong> Jika modal masih tidak bisa diklik setelah "Coba Lagi", silakan:
+            <ul class="mt-2 space-y-1 list-disc list-inside">
+                <li>Clear browser cache (Ctrl+Shift+Delete)</li>
+                <li>Hard refresh (Ctrl+F5)</li>
+                <li>Buka Dev Tools (F12) dan cek Console untuk error</li>
+            </ul>
+        </div>
+
+        <div class="space-y-3">
+            <h3 class="text-lg font-semibold text-white">📝 Changes Made:</h3>
+            <pre class="bg-dark-900 border border-white/10 rounded-lg p-4 text-xs text-gray-300 overflow-x-auto"><code>1. resetAIForm() - Complete reset function
+   - Form fields cleared
+   - Button disabled state removed
+   - Button innerHTML restored
+   - Spinner hidden
+   - currentAIRecommendation reset to null
+   - lucide.createIcons() re-executed
+
+2. getAIRecommendation() - Better error handling
+   - Store original button content
+   - Restore on error (not hardcoded)
+   - Proper state management
+   - Better error recovery
+
+3. Button HTML - CSS disabled state
+   - Added: disabled:opacity-60
+   - Added: disabled:cursor-not-allowed
+   - Added: disabled:hover styles
+</code></pre>
+        </div>
+
+        <div class="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+            <p class="text-green-300 text-sm">
+                <strong>✅ Fix Applied!</strong> Anda sekarang bisa menggunakan fitur AI rekomendasi berkali-kali tanpa perlu refresh halaman.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
