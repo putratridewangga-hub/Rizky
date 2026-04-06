@@ -9,14 +9,14 @@
  */
 
 // Konfigurasi Database
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'db_booking_foto');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_NAME', getenv('DB_NAME') ?: 'db_booking_foto');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASSWORD') ?: '');
 define('DB_CHARSET', 'utf8mb4');
 
 // Base URL Aplikasi
-define('BASE_URL', '/Jasa_Fotografi_Online');
+define('BASE_URL', getenv('BASE_URL') !== false ? getenv('BASE_URL') : '/Jasa_Fotografi_Online');
 
 // Nama Aplikasi
 define('APP_NAME', 'etherna.vows');
