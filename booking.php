@@ -135,6 +135,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ");
         $stmtPembayaran->execute([$idBookingBaru, $total_harga]);
 
+        // ============================================
+        // KIRIM WEBHOOK N8N (SETELAH INSERT BERHASIL)
+        // ============================================
+        $stmtUser = $db->prepare("SELECT nama_lengkap, nomor_telepon FROM users WHERE id_user = ?");
+        $stmtUser->execute([$_SESSION['id_user']]);
+        $dataUser = $stmtUser->fetch();
+
+        $stmtPaket = $db->prepare("SELECT nama_paket FROM paket_foto WHERE id_paket = ?");
+        $stmtPaket->execute([$id_paket]);
+        $dataPaket = $stmtPaket->fetch();
+
+        if ($dataUser && $dataPaket) {
+            $webhookData = [
+                'nama' => $dataUser['nama_lengkap'],
+                'telepon' => $dataUser['nomor_telepon'],
+                'tanggal' => $tanggal_booking,
+                'jam' => $jam_mulai,
+                'paket' => $dataPaket['nama_paket']
+            ];
+            
+            // Kirim POST request ke webhook n8n (silent fail - jangan tampilkan error ke user)
+            $ch = curl_init('https://rizkypratama.app.n8n.cloud/webhook/booking-baru');
+            if ($ch) {
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                    CURLOPT_POSTFIELDS => json_encode($webhookData),
+                    CURLOPT_TIMEOUT => 5,
+                    CURLOPT_CONNECTTIMEOUT => 3
+                ]);
+                @curl_exec($ch);
+                curl_close($ch);
+            }
+        }
+
         setFlash('success', 'Booking berhasil dibuat! Silakan lakukan pembayaran.');
         redirect('detail_booking.php?id=' . $idBookingBaru);
     }
