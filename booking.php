@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtPembayaran->execute([$idBookingBaru, $total_harga]);
 
         // ============================================
-        // KIRIM WEBHOOK N8N (SETELAH INSERT BERHASIL)
+        // KIRIM WEBHOOK N8N SECARA NON-BLOCKING
         // ============================================
         $stmtUser = $db->prepare("SELECT nama_lengkap, nomor_telepon FROM users WHERE id_user = ?");
         $stmtUser->execute([$_SESSION['id_user']]);
@@ -146,28 +146,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtPaket->execute([$id_paket]);
         $dataPaket = $stmtPaket->fetch();
 
+        // Kirim webhook n8n secara non-blocking (background)
         if ($dataUser && $dataPaket) {
-            $webhookData = [
-                'nama' => $dataUser['nama_lengkap'],
-                'telepon' => $dataUser['nomor_telepon'],
-                'tanggal' => $tanggal_booking,
-                'jam' => $jam_mulai,
-                'paket' => $dataPaket['nama_paket']
-            ];
-            
-            // Kirim POST request ke webhook n8n (silent fail - jangan tampilkan error ke user)
-            $ch = curl_init('https://rizkypratama.app.n8n.cloud/webhook/booking-baru');
-            if ($ch) {
-                curl_setopt_array($ch, [
-                    CURLOPT_POST => true,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                    CURLOPT_POSTFIELDS => json_encode($webhookData),
-                    CURLOPT_TIMEOUT => 5,
-                    CURLOPT_CONNECTTIMEOUT => 3
-                ]);
-                @curl_exec($ch);
-                curl_close($ch);
+            $webhookData = json_encode([
+                'nama'     => $dataUser['nama_lengkap'],
+                'telepon'  => $dataUser['nomor_telepon'],
+                'tanggal'  => $tanggal_booking,
+                'jam'      => $jam_mulai,
+                'paket'    => $dataPaket['nama_paket']
+            ]);
+
+            $webhookUrl = 'rizkypratama.app.n8n.cloud';
+            $webhookPath = '/webhook/booking-baru';
+            $dataLength = strlen($webhookData);
+
+            $fp = @fsockopen('ssl://' . $webhookUrl, 443, $errno, $errstr, 3);
+            if ($fp) {
+                $out  = "POST {$webhookPath} HTTP/1.1\r\n";
+                $out .= "Host: {$webhookUrl}\r\n";
+                $out .= "Content-Type: application/json\r\n";
+                $out .= "Content-Length: {$dataLength}\r\n";
+                $out .= "Connection: Close\r\n\r\n";
+                $out .= $webhookData;
+                fwrite($fp, $out);
+                fclose($fp);
             }
         }
 
