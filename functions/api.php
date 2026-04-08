@@ -8,7 +8,7 @@
 // ============================================================
 // DEBUG: Enable detailed error logging
 // ============================================================
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 error_reporting(E_ALL);
 ini_set('error_log', __DIR__ . '/../logs/php_errors.log');
@@ -18,8 +18,81 @@ if (!is_dir(__DIR__ . '/../logs')) {
     mkdir(__DIR__ . '/../logs', 0755, true);
 }
 
-session_start();
 header('Content-Type: application/json; charset=utf-8');
+
+// ============================================================
+// GLOBAL EXCEPTION HANDLER - Catches all uncaught exceptions
+// ============================================================
+set_exception_handler(function($e) {
+    http_response_code(500);
+    
+    $errorResponse = [
+        'success' => false,
+        'error' => 'Uncaught Exception',
+        'message' => $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine(),
+        'code' => $e->getCode(),
+        'timestamp' => date('Y-m-d H:i:s')
+    ];
+    
+    // Log full trace for debugging
+    error_log("=== UNCAUGHT EXCEPTION ===");
+    error_log("Message: " . $e->getMessage());
+    error_log("File: " . $e->getFile());
+    error_log("Line: " . $e->getLine());
+    error_log("Trace: " . $e->getTraceAsString());
+    error_log("========================\n");
+    
+    echo json_encode($errorResponse);
+    exit;
+});
+
+// ============================================================
+// GLOBAL ERROR HANDLER - Catches all PHP errors/warnings
+// ============================================================
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    http_response_code(500);
+    
+    // Map error type
+    $errorTypes = [
+        E_ERROR             => 'Fatal Error',
+        E_WARNING           => 'Warning',
+        E_PARSE             => 'Parse Error',
+        E_NOTICE            => 'Notice',
+        E_CORE_ERROR        => 'Core Error',
+        E_CORE_WARNING      => 'Core Warning',
+        E_COMPILE_ERROR     => 'Compile Error',
+        E_COMPILE_WARNING   => 'Compile Warning',
+        E_USER_ERROR        => 'User Error',
+        E_USER_WARNING      => 'User Warning',
+        E_USER_NOTICE       => 'User Notice',
+        E_STRICT            => 'Strict Error',
+        E_RECOVERABLE_ERROR => 'Recoverable Error',
+        E_DEPRECATED        => 'Deprecated',
+        E_USER_DEPRECATED   => 'User Deprecated',
+    ];
+    
+    $errorType = $errorTypes[$errno] ?? 'Unknown Error';
+    
+    $errorResponse = [
+        'success' => false,
+        'error' => $errorType,
+        'message' => $errstr,
+        'file' => basename($errfile),
+        'line' => $errline,
+        'errno' => $errno,
+        'timestamp' => date('Y-m-d H:i:s')
+    ];
+    
+    // Log full error details
+    error_log("[{$errorType}] {$errstr} in {$errfile}:{$errline}\n");
+    
+    echo json_encode($errorResponse);
+    exit;
+});
+
+session_start();
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/ai_helper.php';
