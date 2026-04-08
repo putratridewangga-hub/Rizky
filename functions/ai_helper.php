@@ -43,17 +43,38 @@ function callGeminiAPI($prompt) {
     $api_key = GEMINI_API_KEY;
     $model = GEMINI_MODEL;
     
-    // Validasi API Key
-    if (empty($api_key) || $api_key === 'YOUR_GEMINI_API_KEY_HERE') {
+    // ============================================================
+    // VALIDASI API KEY - CRITICAL CHECK
+    // ============================================================
+    if ($api_key === null || empty($api_key)) {
+        $errorMsg = 'GEMINI_API_KEY tidak dikonfigurasi di Railway environment variables! ' .
+                   'Hubungi administrator untuk set GEMINI_API_KEY di Railway dashboard.';
+        error_log("[CRITICAL] " . $errorMsg);
         return [
             'success' => false,
-            'error' => 'API Key Google Gemini belum dikonfigurasi. Hubungi administrator.',
+            'error' => $errorMsg,
+            'response' => null,
+            'debug_details' => [
+                'api_key_status' => is_null($api_key) ? 'NULL' : 'EMPTY',
+                'gemini_model' => $model,
+                'config_check' => 'API_KEY not set in Railway environment'
+            ]
+        ];
+    }
+    
+    // Validasi format API key
+    if (strlen($api_key) < 20 || !preg_match('/^[A-Za-z0-9_-]+$/', $api_key)) {
+        error_log("[WARNING] GEMINI_API_KEY format tidak valid. Length: " . strlen($api_key));
+        return [
+            'success' => false,
+            'error' => 'Format GEMINI_API_KEY tidak valid. Pastikan API key dari Google Cloud Console benar.',
             'response' => null
         ];
     }
     
     // Validasi Model
     if (empty($model)) {
+        error_log("[ERROR] GEMINI_MODEL tidak dikonfigurasi");
         return [
             'success' => false,
             'error' => 'Model Gemini tidak dikonfigurasi di config/db.php',
@@ -61,6 +82,9 @@ function callGeminiAPI($prompt) {
         ];
     }
     
+    // ============================================================
+    // PREPARE REQUEST
+    // ============================================================
     $url = GEMINI_ENDPOINT . "/{$model}:generateContent?key={$api_key}";
     
     $requestData = [
@@ -81,11 +105,12 @@ function callGeminiAPI($prompt) {
         ]
     ];
     
-    // Setup cURL request with comprehensive options
+    // ============================================================
+    // SETUP CURL - OPTIMIZED FOR RAILWAY
+    // ============================================================
     $ch = curl_init();
     
-    // SSL verification - Default to false for Railway compatibility
-    // Set to true only if explicitly enabled in config
+    // SSL verification - disabled untuk Railway compatibility
     $sslVerifyPeer = (defined('GEMINI_DISABLE_SSL_VERIFY') && GEMINI_DISABLE_SSL_VERIFY) ? false : false;
     $sslVerifyHost = (defined('GEMINI_DISABLE_SSL_VERIFY') && GEMINI_DISABLE_SSL_VERIFY) ? 0 : 0;
     
@@ -95,32 +120,45 @@ function callGeminiAPI($prompt) {
         CURLOPT_URL => $url,
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_BINARYTRANSFER => true,  // Ensure binary data is returned as-is
         
         // HTTP version and headers
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_2_0,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,  // Use HTTP/1.1 for better Railway compatibility
         CURLOPT_HTTPHEADER => [
             'Content-Type: application/json',
             'Accept: application/json',
+            'Accept-Encoding: gzip, deflate',  // Allow compression
         ],
         CURLOPT_POSTFIELDS => json_encode($requestData),
         
         // Timeouts for Railway connectivity
-        CURLOPT_TIMEOUT => 30,              // Total request timeout
-        CURLOPT_CONNECTTIMEOUT => 10,       // Connection timeout
+        CURLOPT_TIMEOUT => 45,              // Total request timeout (Gemini dapat lambat)
+        CURLOPT_CONNECTTIMEOUT => 15,       // Connection timeout
+        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,  // Force IPv4 untuk compatibility
         
-        // SSL/TLS configuration for Railway compatibility
+        // SSL/TLS configuration for Railway
         CURLOPT_SSL_VERIFYPEER => $sslVerifyPeer,
         CURLOPT_SSL_VERIFYHOST => $sslVerifyHost,
+        CURLOPT_SSL_CIPHER_LIST => 'DEFAULT',  // Use default cipher list
         
-        // Follow redirects (important for APIs)
+        // Follow redirects
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS => 5,
+        CURLOPT_MAXREDIRS => 3,  // Reduced from 5 untuk efficiency
         
-        // User agent to avoid being blocked
-        CURLOPT_USERAGENT => 'Mozilla/5.0 (PHP-Booking-App/1.0)',
+        // User agent
+        CURLOPT_USERAGENT => 'PHP-Booking-App/1.0 (compatible)',
+        
+        // Keep-alive
+        CURLOPT_HTTPHEADER => array_merge([
+            'Connection: keep-alive',
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ]),
     ]);
     
-    // Execute request
+    // ============================================================
+    // EXECUTE REQUEST + CAPTURE ERRORS
+    // ============================================================
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlError = curl_error($ch);
@@ -129,166 +167,179 @@ function callGeminiAPI($prompt) {
     curl_close($ch);
     
     // ============================================================
-    // RESPONSE VALIDATION BEFORE JSON PARSING
+    // DEBUG LOGGING
     // ============================================================
+    error_log("[GEMINI_API] Request URL: " . preg_replace('/key=.+/', 'key=***', $url));
+    error_log("[GEMINI_API] HTTP Code: {$httpCode}");
+    error_log("[GEMINI_API] cURL errno: {$curlErrno}, error: {$curlError}");
+    error_log("[GEMINI_API] Response length: " . strlen($response ?? ''));
+    error_log("[GEMINI_API] Connect time: " . $curlInfo['connect_time'] . "s, Total time: " . $curlInfo['total_time'] . "s");
     
-    // Log detailed info for debugging
-    error_log("=== Gemini API Call Debug ===");
-    error_log("URL: " . $url);
-    error_log("HTTP Code: " . $httpCode);
-    error_log("cURL Error: " . $curlError);
-    error_log("cURL Errno: " . $curlErrno);
-    error_log("Response Length: " . strlen($response ?? ''));
-    error_log("Connect Time: " . $curlInfo['connect_time']);
-    error_log("Total Time: " . $curlInfo['total_time']);
-    
-    // Step 1: Check curl errors first
+    // ============================================================
+    // HANDLE CURL ERRORS
+    // ============================================================
     if ($curlErrno === CURLE_COULDNT_RESOLVE_HOST) {
-        error_log("cURL Error: DNS resolution failed");
+        error_log("[ERROR] DNS resolution failed untuk generativelanguage.googleapis.com");
         return [
             'success' => false,
-            'error' => 'Tidak bisa resolve Gemini API domain. Periksa koneksi internet atau firewall DNS.',
+            'error' => 'DNS resolution error. Periksa firewall atau network connectivity ke Google API.',
             'response' => null,
-            'debug' => 'CURLE_COULDNT_RESOLVE_HOST'
+            'debug_code' => 'CURLE_COULDNT_RESOLVE_HOST'
         ];
     }
     
     if ($curlErrno === CURLE_COULDNT_CONNECT) {
-        error_log("cURL Error: Connection failed");
+        error_log("[ERROR] Connection failed ke Gemini API");
         return [
             'success' => false,
-            'error' => 'Tidak bisa terhubung ke server Gemini API. Firewall atau network issue mungkin penyebabnya.',
+            'error' => 'Tidak bisa terhubung ke Gemini API. Network/Firewall issue pada Railway?',
             'response' => null,
-            'debug' => 'CURLE_COULDNT_CONNECT'
+            'debug_code' => 'CURLE_COULDNT_CONNECT'
         ];
     }
     
     if ($curlErrno === CURLE_OPERATION_TIMEDOUT) {
-        error_log("cURL Error: Operation timeout");
+        error_log("[ERROR] Request timeout - Gemini API tidak merespons dalam waktu yang ditentukan");
         return [
             'success' => false,
-            'error' => 'Request timeout - Gemini API tidak merespons dalam 30 detik. Coba lagi nanti.',
+            'error' => 'Gemini API timeout (> 45 detik). Coba lagi atau hubungi support jika terus terjadi.',
             'response' => null,
-            'debug' => 'CURLE_OPERATION_TIMEDOUT'
+            'debug_code' => 'CURLE_OPERATION_TIMEDOUT'
         ];
     }
     
     if ($curlErrno === CURLE_SSL_CONNECT_ERROR) {
-        error_log("cURL Error: SSL connection error");
+        error_log("[ERROR] SSL connection error");
         return [
             'success' => false,
-            'error' => 'SSL certificate error. Set GEMINI_DISABLE_SSL_VERIFY=true untuk Railway compatibility.',
+            'error' => 'SSL certificate error. Sudah set GEMINI_DISABLE_SSL_VERIFY=true untuk Railway?',
             'response' => null,
-            'debug' => 'CURLE_SSL_CONNECT_ERROR'
+            'debug_code' => 'CURLE_SSL_CONNECT_ERROR'
         ];
     }
     
     // Handle any other cURL error
-    if ($curlErrno !== 0) {
-        error_log("cURL Error #{$curlErrno}: {$curlError}");
+    if ($curlErrno !== 0 && $curlErrno !== CURLE_OK) {
+        error_log("[ERROR] cURL error #{$curlErrno}: {$curlError}");
         return [
             'success' => false,
-            'error' => "Koneksi API gagal (Error #{$curlErrno}): {$curlError}",
+            'error' => "API request failed (cURL error #{$curlErrno}). Detail: {$curlError}",
             'response' => null,
-            'errno' => $curlErrno
+            'debug_errno' => $curlErrno
         ];
     }
     
+    // ============================================================
+    // VALIDATE RESPONSE BEFORE JSON PARSE
+    // ============================================================
+    
     // Check for empty response (common Railway issue)
-    if (empty($response)) {
-        error_log("WARNING: Empty response from Gemini API. HTTP Code: " . $httpCode);
+    if ($response === false || empty($response)) {
+        error_log("[ERROR] Empty/FALSE response from Gemini API. HTTP Code: {$httpCode}");
         return [
             'success' => false,
-            'error' => 'Response kosong dari Gemini API. Kemungkinan network issue atau API down.',
+            'error' => "Response kosong dari Gemini API (HTTP {$httpCode}). Kemungkinan network atau API down.",
             'response' => null,
             'http_code' => $httpCode
         ];
     }
     
-    // Step 2: Validate HTTP response code
+    // Validate HTTP response code
     if ($httpCode !== 200) {
-        error_log("WARNING: Non-200 HTTP response: {$httpCode}");
-        // Try to parse error response if possible
+        error_log("[ERROR] Non-200 HTTP response: {$httpCode}. Response: " . substr($response, 0, 200));
+        
+        // Try to parse error from response
         $trimmedResponse = trim($response);
         $errorData = @json_decode($trimmedResponse, true);
-        $errorMsg = 'Unknown error';
+        $errorMsg = 'Unknown API error';
         
-        if (is_array($errorData) && isset($errorData['error']['message'])) {
-            $errorMsg = $errorData['error']['message'];
-        } elseif (is_array($errorData) && isset($errorData['error'])) {
-            $errorMsg = is_string($errorData['error']) ? $errorData['error'] : json_encode($errorData['error']);
+        if (is_array($errorData)) {
+            if (isset($errorData['error']['message'])) {
+                $errorMsg = $errorData['error']['message'];
+            } elseif (isset($errorData['error'])) {
+                $errorMsg = is_string($errorData['error']) ? $errorData['error'] : json_encode($errorData['error']);
+            }
         }
         
-        error_log("Gemini API Error - HTTP {$httpCode}: {$errorMsg}");
         return [
             'success' => false,
-            'error' => "API Gemini error (HTTP {$httpCode}): {$errorMsg}",
+            'error' => "Gemini API error (HTTP {$httpCode}): {$errorMsg}",
             'response' => null,
             'http_code' => $httpCode,
-            'raw_response' => substr($response, 0, 200)
+            'raw_response' => substr($response, 0, 300)
         ];
     }
     
-    // Validate response before JSON parsing
-    // Check for common JSON parsing issues
+    // ============================================================
+    // VALIDATE RESPONSE FORMAT
+    // ============================================================
     $response = trim($response);
     
-    // Ensure response looks like JSON
+    // Check if response looks like JSON
     if (strlen($response) < 2 || ($response[0] !== '{' && $response[0] !== '[')) {
-        error_log("ERROR: Invalid JSON format. Response starts with: " . substr($response, 0, 50));
+        error_log("[ERROR] Response bukan JSON. Starts with: " . substr($response, 0, 50));
         return [
             'success' => false,
-            'error' => 'Response dari API bukan format JSON yang valid (tidak diawali tanda kurung)',
+            'error' => 'Response dari Gemini API bukan format JSON.',
             'response' => null,
             'raw_response' => substr($response, 0, 200)
         ];
     }
     
-    // Parse response with error handling
-    $responseData = json_decode($response, true);
+    // Parse JSON
+    $responseData = @json_decode($response, true);
+    $jsonError = json_last_error();
     
-    // Check for JSON parse error
-    if ($responseData === null && json_last_error() !== JSON_ERROR_NONE) {
-        $jsonError = json_last_error_msg();
-        error_log("JSON Parse Error: " . $jsonError . " | Response: " . substr($response, 0, 300));
+    if ($jsonError !== JSON_ERROR_NONE) {
+        $jsonErrorMsg = json_last_error_msg();
+        error_log("[ERROR] JSON parse failed: {$jsonErrorMsg}. Response: " . substr($response, 0, 300));
         return [
             'success' => false,
-            'error' => 'Response dari API bukan JSON valid: ' . $jsonError . '. Response: ' . substr($response, 0, 100),
+            'error' => "JSON parse error: {$jsonErrorMsg}",
             'response' => null,
             'raw_response' => substr($response, 0, 500)
         ];
     }
     
-    // Verify responseData is actually an array after parsing
+    // Verify it's actually an array
     if (!is_array($responseData)) {
-        error_log("ERROR: JSON decoded but not array: " . gettype($responseData));
+        error_log("[ERROR] JSON decoded tapi bukan array. Type: " . gettype($responseData));
         return [
             'success' => false,
-            'error' => 'Response dari API tidak format array/object yang valid',
-            'response' => null,
-            'raw_response' => substr($response, 0, 200)
-        ];
-    }
-    
-    // Extract text dari response
-    $textContent = null;
-    if (isset($responseData['candidates'][0]['content']['parts'][0]['text'])) {
-        $textContent = $responseData['candidates'][0]['content']['parts'][0]['text'];
-    }
-    
-    if (!$textContent) {
-        return [
-            'success' => false,
-            'error' => 'Response dari API Gemini kosong atau format tidak sesuai',
+            'error' => 'Response format tidak sesuai ekspektasi',
             'response' => null
         ];
     }
     
+    // ============================================================
+    // EXTRACT TEXT DARI RESPONSE
+    // ============================================================
+    $textContent = null;
+    if (isset($responseData['candidates']) && is_array($responseData['candidates'])) {
+        if (isset($responseData['candidates'][0]['content']['parts'][0]['text'])) {
+            $textContent = $responseData['candidates'][0]['content']['parts'][0]['text'];
+        }
+    }
+    
+    if (!$textContent) {
+        error_log("[ERROR] Text content tidak ditemukan dalam response. Keys: " . json_encode(array_keys($responseData ?? [])));
+        return [
+            'success' => false,
+            'error' => 'Response dari Gemini API kosong atau format tidak sesuai',
+            'response' => null,
+            'raw_keys' => array_keys($responseData ?? [])
+        ];
+    }
+    
+    // ============================================================
+    // SUCCESS
+    // ============================================================
     return [
         'success' => true,
         'error' => null,
         'response' => $textContent,
-        'raw_response' => $responseData
+        'raw_response' => $responseData,
+        'http_code' => $httpCode
     ];
 }
 
