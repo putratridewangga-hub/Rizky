@@ -69,9 +69,16 @@ function handleGetRecommendation() {
     
     if (!$result['success']) {
         http_response_code(500);
+        $errorMsg = $result['error'];
+        
+        // Tambahkan debug info untuk 'Model not found' error
+        if (strpos($errorMsg, '400') !== false || strpos($errorMsg, 'model') !== false) {
+            $errorMsg = "Model AI tidak ditemukan atau API Key tidak valid. Hubungi administrator untuk verifikasi konfigurasi.";
+        }
+        
         echo json_encode([
             'success' => false,
-            'message' => $result['error']
+            'message' => $errorMsg
         ]);
         
         // Tetap simpan log bahkan jika error (untuk debugging)

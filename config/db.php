@@ -26,7 +26,7 @@ define('APP_NAME', 'etherna.vows');
 // KONFIGURASI GOOGLE GEMINI API
 // ============================================
 define('GEMINI_API_KEY',  'AIzaSyD7TygzNOciP9Dt_-dCgan9V1BpF5ptL4w');
-define('GEMINI_MODEL',    'gemini-2.5-flash');
+define('GEMINI_MODEL',    'gemini-2.0-flash');
 define('GEMINI_ENDPOINT', 'https://generativelanguage.googleapis.com/v1/models');
 
 /**

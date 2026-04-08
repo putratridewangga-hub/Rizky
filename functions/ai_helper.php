@@ -52,6 +52,15 @@ function callGeminiAPI($prompt) {
         ];
     }
     
+    // Validasi Model
+    if (empty($model)) {
+        return [
+            'success' => false,
+            'error' => 'Model Gemini tidak dikonfigurasi di config/db.php',
+            'response' => null
+        ];
+    }
+    
     $url = GEMINI_ENDPOINT . "/{$model}:generateContent?key={$api_key}";
     
     $requestData = [
@@ -111,10 +120,17 @@ function callGeminiAPI($prompt) {
             ? $responseData['error']['message'] 
             : 'Error ' . $httpCode;
         
+        // Add more descriptive error messages
+        $fullErrorMsg = 'API Gemini error (' . $httpCode . '): ' . $errorMessage;
+        
+        // Log for debugging
+        error_log("Gemini API Error - HTTP Code: " . $httpCode . " | URL: " . $url . " | Response: " . json_encode($responseData));
+        
         return [
             'success' => false,
-            'error' => 'API Gemini error: ' . $errorMessage,
-            'response' => null
+            'error' => $fullErrorMsg,
+            'response' => null,
+            'http_code' => $httpCode
         ];
     }
     

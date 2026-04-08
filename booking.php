@@ -684,8 +684,10 @@ async function getAIRecommendation() {
     lucide.createIcons();
     
     try {
-        // Call API endpoint
-        const response = await fetch('<?= BASE_URL ?>/functions/api.php?action=getRecommendation', {
+        // Call API endpoint - gunakan relative path untuk compatibility
+        let apiUrl = './functions/api.php?action=getRecommendation';
+        
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
