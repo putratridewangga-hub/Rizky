@@ -113,5 +113,3 @@ function handleGetRecommendation() {
         'recommendation' => $recommendation
     ]);
 }
-
-?>
