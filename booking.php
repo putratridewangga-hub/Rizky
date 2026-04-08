@@ -702,9 +702,54 @@ async function getAIRecommendation() {
             })
         });
         
-        const data = await response.json();
+        // ============================================================
+        // STEP 1: Check HTTP response status
+        // ============================================================
+        if (!response.ok) {
+            throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+        }
         
-        // Handle error response
+        // ============================================================
+        // STEP 2: Get response as text first (not directly as JSON)
+        // ============================================================
+        const responseText = await response.text();
+        
+        // ============================================================
+        // STEP 3: Validate response is not empty
+        // ============================================================
+        if (!responseText || responseText.trim() === '') {
+            throw new Error('Server returned empty response');
+        }
+        
+        // ============================================================
+        // STEP 4: Validate response looks like JSON
+        // ============================================================
+        const trimmedResponse = responseText.trim();
+        if (trimmedResponse[0] !== '{' && trimmedResponse[0] !== '[') {
+            console.error('Raw response received:', responseText.substring(0, 500));
+            throw new Error('Server response is not valid JSON format');
+        }
+        
+        // ============================================================
+        // STEP 5: Parse JSON with error handling
+        // ============================================================
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (jsonError) {
+            console.error('JSON Parse Error:', jsonError.message);
+            console.error('Raw response:', responseText.substring(0, 500));
+            throw new Error('Invalid JSON response from server: ' + jsonError.message);
+        }
+        
+        // ============================================================
+        // STEP 6: Validate data structure
+        // ============================================================
+        if (!data || typeof data !== 'object') {
+            throw new Error('Response is not a valid object');
+        }
+        
+        // Handle error response from API
         if (!data.success) {
             showAIError(data.message || 'Terjadi kesalahan saat mendapatkan rekomendasi');
             // Restore button state
@@ -727,8 +772,10 @@ async function getAIRecommendation() {
         document.getElementById('aiResultSection').classList.remove('hidden');
         
     } catch (error) {
-        console.error('Error:', error);
-        showAIError('Terjadi kesalahan jaringan: ' + error.message);
+        console.error('AI Recommendation Error:');
+        console.error('Message:', error.message);
+        console.error('Stack:', error.stack);
+        showAIError('Terjadi kesalahan: ' + error.message);
         // Restore button state
         btn.disabled = false;
         btn.classList.remove('disabled');

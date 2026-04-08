@@ -380,9 +380,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: data
             });
 
-            const result = await response.json();
+            // ============================================================
+            // STEP 1: Check HTTP response status
+            // ============================================================
+            if (!response.ok) {
+                throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+            }
 
-            if (!response.ok || !result.success) {
+            // ============================================================
+            // STEP 2: Get response as text first
+            // ============================================================
+            const responseText = await response.text();
+
+            // ============================================================
+            // STEP 3: Validate response is not empty
+            // ============================================================
+            if (!responseText || responseText.trim() === '') {
+                throw new Error('Server returned empty response');
+            }
+
+            // ============================================================
+            // STEP 4: Validate response looks like JSON
+            // ============================================================
+            const trimmedResponse = responseText.trim();
+            if (trimmedResponse[0] !== '{' && trimmedResponse[0] !== '[') {
+                console.error('Raw response received:', responseText.substring(0, 500));
+                throw new Error('Server response is not valid JSON format');
+            }
+
+            // ============================================================
+            // STEP 5: Parse JSON with error handling
+            // ============================================================
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (jsonError) {
+                console.error('JSON Parse Error:', jsonError.message);
+                console.error('Raw response:', responseText.substring(0, 500));
+                throw new Error('Invalid JSON response from server: ' + jsonError.message);
+            }
+
+            // ============================================================
+            // STEP 6: Validate response structure
+            // ============================================================
+            if (!result || typeof result !== 'object') {
+                throw new Error('Response is not a valid object');
+            }
+
+            if (!result.success) {
                 throw new Error(result.message || 'Gagal generate pesan');
             }
 
