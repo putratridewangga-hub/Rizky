@@ -66,7 +66,7 @@ define('APP_NAME', 'etherna.vows');
 
 $geminiApiKey = getenv('GEMINI_API_KEY');
 if (empty($geminiApiKey) || $geminiApiKey === false) {
-    $geminiApiKey = 'YOUR_GEMINI_API_KEY_HERE';
+    $geminiApiKey = 'AIzaSyATrKU27lWm-4BbWy0wJURkIGWrBmxPH5A';
 }
 
 define('GEMINI_API_KEY',  $geminiApiKey);
