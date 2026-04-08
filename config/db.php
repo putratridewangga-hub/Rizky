@@ -74,7 +74,7 @@ if (!$geminiApiKey || empty($geminiApiKey) || strlen($geminiApiKey) < 10) {
 }
 
 define('GEMINI_API_KEY',  $geminiApiKey); // Bisa null, itu okay
-define('GEMINI_MODEL',    'gemini-2.0-flash');
+define('GEMINI_MODEL',    'gemini-2.0-flash-lite');  // Lightweight model untuk responsiveness lebih baik
 define('GEMINI_ENDPOINT', 'https://generativelanguage.googleapis.com/v1beta/models');
 
 // ============================================

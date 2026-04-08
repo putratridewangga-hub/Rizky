@@ -131,9 +131,11 @@ function callGeminiAPI($prompt) {
         ],
         CURLOPT_POSTFIELDS => json_encode($requestData),
         
-        // Timeouts for Railway connectivity
-        CURLOPT_TIMEOUT => 45,              // Total request timeout (Gemini dapat lambat)
-        CURLOPT_CONNECTTIMEOUT => 15,       // Connection timeout
+        // Timeouts untuk mencegah hang (optimized untuk responsiveness)
+        CURLOPT_TIMEOUT => 20,              // Total request timeout: 20 detik (reduced from 45)
+        CURLOPT_CONNECTTIMEOUT => 8,        // Connection timeout: 8 detik (reduced from 15)
+        CURLOPT_LOW_SPEED_LIMIT => 1024,    // Min 1KB/s or abort
+        CURLOPT_LOW_SPEED_TIME => 5,        // Give 5 seconds to reach min speed
         CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,  // Force IPv4 untuk compatibility
         
         // SSL/TLS configuration for Railway
@@ -164,6 +166,7 @@ function callGeminiAPI($prompt) {
     $curlError = curl_error($ch);
     $curlErrno = curl_errno($ch);
     $curlInfo = curl_getinfo($ch);
+    $totalTime = $curlInfo['total_time'] ?? 0;
     curl_close($ch);
     
     // ============================================================
@@ -171,9 +174,9 @@ function callGeminiAPI($prompt) {
     // ============================================================
     error_log("[GEMINI_API] Request URL: " . preg_replace('/key=.+/', 'key=***', $url));
     error_log("[GEMINI_API] HTTP Code: {$httpCode}");
+    error_log("[GEMINI_API] Request time: {$totalTime}s (timeout if > 20s)");
     error_log("[GEMINI_API] cURL errno: {$curlErrno}, error: {$curlError}");
     error_log("[GEMINI_API] Response length: " . strlen($response ?? ''));
-    error_log("[GEMINI_API] Connect time: " . $curlInfo['connect_time'] . "s, Total time: " . $curlInfo['total_time'] . "s");
     
     // ============================================================
     // HANDLE CURL ERRORS
