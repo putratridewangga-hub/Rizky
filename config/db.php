@@ -8,6 +8,42 @@
  * menggunakan PDO (PHP Data Objects) untuk keamanan.
  */
 
+// ============================================
+// LOAD ENVIRONMENT VARIABLES (.env FILE)
+// ============================================
+// Load .env atau api.env file untuk local development
+$envFile = __DIR__ . '/../api.env';
+if (!file_exists($envFile)) {
+    $envFile = __DIR__ . '/../.env';
+}
+
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        // Skip comments
+        if (str_starts_with(trim($line), '#')) {
+            continue;
+        }
+        
+        // Parse var=value
+        if (strpos($line, '=') !== false) {
+            [$key, $value] = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+            
+            // Remove quotes if present
+            if ((str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+                (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
+                $value = substr($value, 1, -1);
+            }
+            
+            // Set environment variable
+            putenv("{$key}={$value}");
+            $_ENV[$key] = $value;
+        }
+    }
+}
+
 // Konfigurasi Database (Railway Environment Variables)
 define('DB_HOST',    getenv('DB_HOST')     ?: 'localhost');
 define('DB_PORT',    getenv('DB_PORT')     ?: '3306');
@@ -25,9 +61,24 @@ define('APP_NAME', 'etherna.vows');
 // ============================================
 // KONFIGURASI GOOGLE GEMINI API
 // ============================================
-define('GEMINI_API_KEY',  'AIzaSyD7TygzNOciP9Dt_-dCgan9V1BpF5ptL4w');
+// ⚠️ IMPORTANT: Jangan hardcode API key di code!
+// Gunakan .env atau api.env file untuk security
+
+$geminiApiKey = getenv('GEMINI_API_KEY');
+if (empty($geminiApiKey) || $geminiApiKey === false) {
+    $geminiApiKey = 'YOUR_GEMINI_API_KEY_HERE';
+}
+
+define('GEMINI_API_KEY',  $geminiApiKey);
 define('GEMINI_MODEL',    'gemini-2.0-flash');
 define('GEMINI_ENDPOINT', 'https://generativelanguage.googleapis.com/v1/models');
+
+// ============================================
+// KONFIGURASI RAILWAY / SSL ISSUES
+// ============================================
+// Jika mengalaman SSL certificate errors di Railway, set true
+// WARNING: Hanya untuk testing/debugging, JANGAN use di production!
+define('GEMINI_DISABLE_SSL_VERIFY', getenv('GEMINI_DISABLE_SSL_VERIFY') === 'true');
 
 /**
  * Fungsi untuk membuat koneksi database PDO

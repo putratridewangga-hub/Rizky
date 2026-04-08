@@ -83,6 +83,11 @@ function callGeminiAPI($prompt) {
     
     // Setup cURL request
     $ch = curl_init();
+    
+    // Determine SSL verification (workaround untuk Railway)
+    $sslVerifyPeer = GEMINI_DISABLE_SSL_VERIFY ? false : true;
+    $sslVerifyHost = GEMINI_DISABLE_SSL_VERIFY ? 0 : 2;
+    
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
@@ -93,26 +98,103 @@ function callGeminiAPI($prompt) {
         CURLOPT_POSTFIELDS => json_encode($requestData),
         CURLOPT_TIMEOUT => 30,
         CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_SSL_VERIFYPEER => $sslVerifyPeer,
+        CURLOPT_SSL_VERIFYHOST => $sslVerifyHost,
     ]);
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlError = curl_error($ch);
+    $curlErrno = curl_errno($ch);
+    $curlInfo = curl_getinfo($ch);
     curl_close($ch);
     
-    // Handle cURL error
+    // ============================================================
+    // ENHANCED ERROR HANDLING FOR RAILWAY OUTGOING CONNECTIONS
+    // ============================================================
+    
+    // Log detailed info for debugging
+    error_log("=== Gemini API Call Debug ===");
+    error_log("URL: " . $url);
+    error_log("HTTP Code: " . $httpCode);
+    error_log("cURL Error: " . $curlError);
+    error_log("cURL Errno: " . $curlErrno);
+    error_log("Response Length: " . strlen($response ?? ''));
+    error_log("Connect Time: " . $curlInfo['connect_time']);
+    error_log("Total Time: " . $curlInfo['total_time']);
+    
+    // Check for connection errors (Railway firewall/network issues)
+    if ($curlErrno === CURLE_COULDNT_RESOLVE_HOST) {
+        return [
+            'success' => false,
+            'error' => 'Tidak bisa terhubung ke Gemini API. Periksa koneksi internet atau firewall.',
+            'response' => null,
+            'debug' => 'DNS resolution failed (CURLE_COULDNT_RESOLVE_HOST)'
+        ];
+    }
+    
+    if ($curlErrno === CURLE_COULDNT_CONNECT) {
+        return [
+            'success' => false,
+            'error' => 'Tidak bisa terhubung ke server Gemini API. Mungkin firewall atau network issue.',
+            'response' => null,
+            'debug' => 'Connection failed (CURLE_COULDNT_CONNECT)'
+        ];
+    }
+    
+    if ($curlErrno === CURLE_OPERATION_TIMEDOUT) {
+        return [
+            'success' => false,
+            'error' => 'Request timeout. Gemini API tidak merespons dalam waktu yang ditentukan.',
+            'response' => null,
+            'debug' => 'Operation timeout'
+        ];
+    }
+    
+    if ($curlErrno === CURLE_SSL_CONNECT_ERROR) {
+        return [
+            'success' => false,
+            'error' => 'SSL certificate error. Railway mungkin memblokir koneksi HTTPS keluar.',
+            'response' => null,
+            'debug' => 'SSL connection error (CURLE_SSL_CONNECT_ERROR)',
+            'solution' => 'Coba setting CURLOPT_SSL_VERIFYPEER ke false di production'
+        ];
+    }
+    
+    // Handle cURL error (generic)
     if ($curlError) {
         return [
             'success' => false,
             'error' => 'Koneksi ke API Gemini gagal: ' . $curlError,
-            'response' => null
+            'response' => null,
+            'errno' => $curlErrno
+        ];
+    }
+    
+    // Check for empty response (common Railway issue)
+    if (empty($response)) {
+        error_log("WARNING: Empty response from Gemini API. HTTP Code: " . $httpCode);
+        return [
+            'success' => false,
+            'error' => 'Response kosong dari Gemini API. Kemungkinan network issue atau API down.',
+            'response' => null,
+            'http_code' => $httpCode
         ];
     }
     
     // Parse response
     $responseData = json_decode($response, true);
+    
+    // Check for JSON parse error
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log("JSON Parse Error: " . json_last_error_msg() . " | Response: " . substr($response, 0, 200));
+        return [
+            'success' => false,
+            'error' => 'Response dari API bukan JSON valid: ' . json_last_error_msg(),
+            'response' => null,
+            'raw_response' => substr($response, 0, 500)
+        ];
+    }
     
     // Handle API error response
     if ($httpCode !== 200) {

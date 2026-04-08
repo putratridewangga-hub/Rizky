@@ -1,0 +1,43 @@
+# Environment Variables - JANGAN COMMIT KE GIT!
+.env
+api.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+storage/logs/
+
+# Cache
+/tmp/
+/cache/
+.cache/
+
+# Uploads
+uploads/bukti/*
+!uploads/bukti/.gitkeep
+
+# Dependencies
+vendor/
+node_modules/
+
+# Build
+dist/
+build/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3

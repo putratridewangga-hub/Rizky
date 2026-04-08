@@ -689,6 +689,7 @@ async function getAIRecommendation() {
         
         const response = await fetch(apiUrl, {
             method: 'POST',
+            credentials: 'include',  // ✅ PENTING: Include session cookies
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
