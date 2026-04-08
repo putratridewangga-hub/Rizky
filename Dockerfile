@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     php8.1-gd \
     php8.1-mbstring \
     php8.1-xml \
+    php8.1-curl \ 
+    curl \
     libapache2-mod-php8.1 \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
@@ -20,7 +22,9 @@ COPY . /var/www/html
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
+# Apache config
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
 RUN echo '<Directory /var/www/html>\n\
     DirectoryIndex index.php index.html\n\
     AllowOverride All\n\
