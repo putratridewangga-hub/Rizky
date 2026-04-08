@@ -70,8 +70,8 @@ if (empty($geminiApiKey) || $geminiApiKey === false) {
 }
 
 define('GEMINI_API_KEY',  $geminiApiKey);
-define('GEMINI_MODEL',    'gemini-pro');
-define('GEMINI_ENDPOINT', 'https://generativelanguage.googleapis.com/v1/models');
+define('GEMINI_MODEL',    'gemini-1.5-flash');
+define('GEMINI_ENDPOINT', 'https://generativelanguage.googleapis.com/v1beta/models');
 
 // ============================================
 // KONFIGURASI RAILWAY / SSL ISSUES
