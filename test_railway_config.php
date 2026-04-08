@@ -5,5 +5,7 @@ error_reporting(E_ALL);
 echo "STEP 1<br>";
 
 require __DIR__ . '/config/db.php';
-
 echo "STEP 2<br>";
+
+require __DIR__ . '/functions/ai_helper.php';
+echo "STEP 3<br>";
